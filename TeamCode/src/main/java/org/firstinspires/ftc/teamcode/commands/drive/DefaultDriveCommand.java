@@ -28,7 +28,7 @@ public class DefaultDriveCommand extends CommandBase {
 
     @Override
     public void execute() {
-        drive.driveRobotCentric(
+        drive.driveFieldRelative(
                 x.getAsDouble(),
                 y.getAsDouble(),
                 rotation.getAsDouble()

@@ -6,7 +6,6 @@ import com.arcrobotics.ftclib.command.WaitCommand;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
 import org.firstinspires.ftc.teamcode.Robot;
-import org.firstinspires.ftc.teamcode.commands.arm.ScoreSequence;
 import org.firstinspires.ftc.teamcode.commands.arm.SetArmStateCommand;
 import org.firstinspires.ftc.teamcode.subsystems.Arm;
 
@@ -22,7 +21,6 @@ public class SimpleAuto extends CommandOpMode {
         schedule(new SequentialCommandGroup(
                 new SetArmStateCommand(robot.arm, Arm.State.INTAKE),
                 new WaitCommand(500),
-                new ScoreSequence(robot.arm),
                 new WaitCommand(500),
                 new SetArmStateCommand(robot.arm, Arm.State.HOME)
         ));
