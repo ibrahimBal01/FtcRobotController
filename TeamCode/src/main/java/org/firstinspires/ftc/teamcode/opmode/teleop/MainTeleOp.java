@@ -37,7 +37,7 @@ public class MainTeleOp extends CommandOpMode {
         );
 
         driver.getGamepadButton(GamepadKeys.Button.LEFT_BUMPER).whenPressed(robot.drive::resetHeading);
-        driver.getGamepadButton(GamepadKeys.Button.A).whenPressed(new SetNectarTurretStateCommand(robot.nectarTurret, NectarTurret.State.SCORE));
+        //driver.getGamepadButton(GamepadKeys.Button.A).whenPressed(new SetNectarTurretStateCommand(robot.nectarTurret, NectarTurret.State.SCORE));
 
     }
 }

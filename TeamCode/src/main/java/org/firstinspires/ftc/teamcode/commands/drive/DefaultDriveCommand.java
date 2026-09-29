@@ -29,7 +29,7 @@ public class DefaultDriveCommand extends CommandBase {
     @Override
     public void execute() {
         drive.driveFieldRelative(
-                x.getAsDouble(),
+                -x.getAsDouble(),
                 y.getAsDouble(),
                 rotation.getAsDouble()
         );
