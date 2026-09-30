@@ -1,110 +1,94 @@
 package org.firstinspires.ftc.teamcode.subsystems;
 
 import com.arcrobotics.ftclib.command.SubsystemBase;
-import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
-import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.pedropathing.drivetrain.DrivePowers;
+import com.pedropathing.follower.Follower;
+import com.pedropathing.follower.ManualDrive;
+import com.pedropathing.math.Pose;
+import com.pedropathing.paths.Path;
 import com.qualcomm.robotcore.hardware.HardwareMap;
-import com.qualcomm.robotcore.hardware.IMU;
 
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.teamcode.pedro.Constants;
 
+/**
+ * Single drivetrain subsystem backed by the Pedro Pathing Follower.
+ * Used for both TeleOp (manual driving) and Autonomous (path following / holding).
+ *
+ * The follower is updated once per scheduler run in periodic(), so nothing else
+ * in the project should call follower.update().
+ *
+ * Sign convention (same as Pedro's DrivePowers and the Tests procedures):
+ * forward + = robot front, lateral + = robot left, turn + = counter-clockwise.
+ */
 public class Drive extends SubsystemBase {
-    private final DcMotorEx frontLeft;
-    private final DcMotorEx frontRight;
-    private final DcMotorEx backLeft;
-    private final DcMotorEx backRight;
-
-    private final IMU imu;
+    private final Follower follower;
 
     public Drive(HardwareMap hardwareMap) {
-        frontLeft = hardwareMap.get(DcMotorEx.class, "frontLeft");
-        frontRight = hardwareMap.get(DcMotorEx.class, "frontRight");
-        backLeft = hardwareMap.get(DcMotorEx.class, "backLeft");
-        backRight = hardwareMap.get(DcMotorEx.class, "backRight");
-
-        frontLeft.setDirection(DcMotor.Direction.FORWARD);
-        backLeft.setDirection(DcMotor.Direction.REVERSE);
-        backRight.setDirection(DcMotor.Direction.REVERSE);
-
-        frontLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        frontRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        backLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        backRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-
-        frontLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        frontRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        backLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        backRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-
-        imu = hardwareMap.get(IMU.class, "imu");
-        // This needs to be changed to match the orientation on your robot
-        RevHubOrientationOnRobot.LogoFacingDirection logoDirection =
-                RevHubOrientationOnRobot.LogoFacingDirection.UP;
-        RevHubOrientationOnRobot.UsbFacingDirection usbDirection =
-                RevHubOrientationOnRobot.UsbFacingDirection.FORWARD;
-
-        RevHubOrientationOnRobot orientationOnRobot = new
-                RevHubOrientationOnRobot(logoDirection, usbDirection);
-        imu.initialize(new IMU.Parameters(orientationOnRobot));
-
-        stop();
+        follower = Constants.create(hardwareMap);
     }
 
-    public void driveFieldRelative(double forward, double right, double rotate) {
-        // First, convert direction being asked to drive to polar coordinates
-        double theta = Math.atan2(forward, right);
-        double r = Math.hypot(right, forward);
-
-        // Second, rotate angle by the angle the robot is pointing
-        theta = AngleUnit.normalizeRadians(theta -
-                imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS));
-
-        // Third, convert back to cartesian
-        double newForward = r * Math.sin(theta);
-        double newRight = r * Math.cos(theta);
-
-        // Finally, call the drive method with robot relative forward and right amounts
-        drive(newForward, newRight, rotate);
+    @Override
+    public void periodic() {
+        follower.update();
     }
 
-    public void drive(double forward, double right, double rotate) {
-        // This calculates the power needed for each wheel based on the amount of forward,
-        // strafe right, and rotate
-        double frontLeftPower = forward + right + rotate;
-        double frontRightPower = forward - right + rotate;
-        double backRightPower = forward + right - rotate;
-        double backLeftPower = forward - right - rotate;
+    // ---------------- TeleOp ----------------
 
-        double maxPower = 0.5;
-        double maxSpeed = 0.7;  // make this slower for outreaches
-
-        // This is needed to make sure we don't pass > 1.0 to any wheel
-        // It allows us to keep all of the motors in proportion to what they should
-        // be and not get clipped
-        maxPower = Math.max(maxPower, Math.abs(frontLeftPower));
-        maxPower = Math.max(maxPower, Math.abs(frontRightPower));
-        maxPower = Math.max(maxPower, Math.abs(backRightPower));
-        maxPower = Math.max(maxPower, Math.abs(backLeftPower));
-
-        // We multiply by maxSpeed so that it can be set lower for outreaches
-        // When a young child is driving the robot, we may not want to allow full
-        // speed.
-        frontLeft.setPower(maxSpeed * (frontLeftPower / maxPower));
-        frontRight.setPower(maxSpeed * (frontRightPower / maxPower));
-        backLeft.setPower(maxSpeed * (backLeftPower / maxPower));
-        backRight.setPower(maxSpeed * (backRightPower / maxPower));
+    public void manualRobotCentric(double forward, double lateral, double turn) {
+        follower.manual(scaled(forward, lateral, turn));
     }
 
-    public void resetHeading(){
-        imu.resetYaw();
+    public void manualFieldCentric(double forward, double lateral, double turn) {
+        double s = org.firstinspires.ftc.teamcode.Constants.Drive.MAX_POWER;
+        follower.manual(ManualDrive.fieldCentric(
+                forward * s, lateral * s, turn * s, follower.pose().heading()));
+    }
+
+    /** Makes the robot's current facing the new field-centric "forward". */
+    public void resetHeading() {
+        Pose p = follower.pose();
+        follower.setPose(new Pose(p.x(), p.y(), 0));
     }
 
     public void stop() {
-        frontLeft.setPower(0);
-        frontRight.setPower(0);
-        backLeft.setPower(0);
-        backRight.setPower(0);
+        follower.manual(new DrivePowers(0, 0, 0));
+    }
+
+    // ---------------- Autonomous ----------------
+
+    public void follow(Path path) {
+        follower.follow(path);
+    }
+
+    public void hold(Pose pose) {
+        follower.hold(pose);
+    }
+
+    public boolean isBusy() {
+        return follower.isBusy();
+    }
+
+    public boolean atParametricEnd() {
+        return follower.atParametricEnd();
+    }
+
+    // ---------------- Localization ----------------
+
+    public Pose getPose() {
+        return follower.pose();
+    }
+
+    public void setPose(Pose pose) {
+        follower.setPose(pose);
+    }
+
+    /** Escape hatch for anything not wrapped here (telemetry, follower.mode(), ...). */
+    public Follower getFollower() {
+        return follower;
+    }
+
+    private static DrivePowers scaled(double forward, double lateral, double turn) {
+        double s = org.firstinspires.ftc.teamcode.Constants.Drive.MAX_POWER;
+        return new DrivePowers(forward * s, lateral * s, turn * s);
     }
 }

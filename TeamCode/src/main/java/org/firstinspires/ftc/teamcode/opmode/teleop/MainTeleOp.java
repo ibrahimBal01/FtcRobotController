@@ -30,9 +30,10 @@ public class MainTeleOp extends CommandOpMode {
         robot.drive.setDefaultCommand(
                 new DefaultDriveCommand(
                         robot.drive,
-                        driver::getLeftX,
-                        () -> -driver.getLeftY(),
-                        driver::getRightX
+                        () -> -driver.getLeftY(),   // forward  (+ = front)
+                        () -> -driver.getLeftX(),   // lateral  (+ = left)
+                        () -> -driver.getRightX(),  // turn     (+ = counter-clockwise)
+                        true                        // field-centric; false = robot-centric
                 )
         );
 

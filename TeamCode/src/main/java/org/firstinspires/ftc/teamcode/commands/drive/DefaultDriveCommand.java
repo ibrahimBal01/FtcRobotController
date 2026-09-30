@@ -6,38 +6,40 @@ import java.util.function.DoubleSupplier;
 
 import org.firstinspires.ftc.teamcode.subsystems.Drive;
 
+/**
+ * TeleOp driving through the Pedro Follower.
+ * Suppliers use Pedro's convention: forward +, lateral + = left, turn + = counter-clockwise.
+ */
 public class DefaultDriveCommand extends CommandBase {
     private final Drive drive;
-    private final DoubleSupplier x;
-    private final DoubleSupplier y;
-    private final DoubleSupplier rotation;
+    private final DoubleSupplier forward;
+    private final DoubleSupplier lateral;
+    private final DoubleSupplier turn;
+    private final boolean fieldCentric;
 
     public DefaultDriveCommand(
             Drive drive,
-            DoubleSupplier x,
-            DoubleSupplier y,
-            DoubleSupplier rotation) {
+            DoubleSupplier forward,
+            DoubleSupplier lateral,
+            DoubleSupplier turn,
+            boolean fieldCentric) {
 
         this.drive = drive;
-        this.x = x;
-        this.y = y;
-        this.rotation = rotation;
+        this.forward = forward;
+        this.lateral = lateral;
+        this.turn = turn;
+        this.fieldCentric = fieldCentric;
 
         addRequirements(drive);
     }
 
     @Override
     public void execute() {
-        drive.driveFieldRelative(
-                -x.getAsDouble(),
-                y.getAsDouble(),
-                rotation.getAsDouble()
-        );
-    }
-
-    @Override
-    public void end(boolean interrupted) {
-        drive.stop();
+        if (fieldCentric) {
+            drive.manualFieldCentric(forward.getAsDouble(), lateral.getAsDouble(), turn.getAsDouble());
+        } else {
+            drive.manualRobotCentric(forward.getAsDouble(), lateral.getAsDouble(), turn.getAsDouble());
+        }
     }
 
     @Override
