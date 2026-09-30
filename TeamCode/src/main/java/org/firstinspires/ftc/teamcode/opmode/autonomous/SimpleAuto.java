@@ -8,6 +8,7 @@ import com.pedropathing.math.Pose;
 import com.pedropathing.paths.Path;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
+import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.Robot;
 import org.firstinspires.ftc.teamcode.commands.drive.FollowPathCommand;
 
@@ -21,22 +22,36 @@ import static com.pedropathing.api.Paths.line;
 public class SimpleAuto extends CommandOpMode {
 
     private static final Pose START = new Pose(0, 0, 0);
-    private static final Pose FORWARD = new Pose(24, 0, 0);
+    private static final Pose FORWARD = new Pose(72, 0, 0);
+    private static final Pose FORWARD2 = new Pose(72, 72, 0);
+    private static final Pose FORWARD3 = new Pose(0, 72, 0);
+
+
+
 
     private Robot robot;
 
     @Override
     public void initialize() {
-        robot = new Robot(hardwareMap);
+        robot = new Robot(hardwareMap, telemetry);
 
         Path out = line(START, FORWARD).constant(0);
-        Path back = line(FORWARD, START).constant(0);
+        Path left = line(FORWARD, FORWARD2).constant(0);
+        Path back = line(FORWARD2, FORWARD3).constant(0);
+        Path start = line(FORWARD3, START).constant(0);
 
         schedule(new SequentialCommandGroup(
                 new InstantCommand(() -> robot.drive.setPose(START)),
                 new FollowPathCommand(robot.drive, out),
                 new WaitCommand(500),
-                new FollowPathCommand(robot.drive, back)
-        ));
+                new FollowPathCommand(robot.drive, left),
+                new WaitCommand(500),
+                new FollowPathCommand(robot.drive, back),
+                new WaitCommand(500),
+                new FollowPathCommand(robot.drive, start)
+
+
+
+                ));
     }
 }
