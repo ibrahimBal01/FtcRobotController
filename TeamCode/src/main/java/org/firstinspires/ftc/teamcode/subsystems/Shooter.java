@@ -1,133 +1,150 @@
 package org.firstinspires.ftc.teamcode.subsystems;
 
 import com.arcrobotics.ftclib.command.SubsystemBase;
+import com.arcrobotics.ftclib.controller.PIDController;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.VoltageSensor;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
+import org.firstinspires.ftc.teamcode.Constants;
 
+/**
+ * Two-motor flywheel with closed-loop RPM control.
+ *
+ * power = kV * targetRpm * (nominalVoltage / batteryVoltage)   (feedforward, does most of the work)
+ *       + PID(rpm error)                                       (corrects load/ball dips)
+ *
+ * The control loop runs in periodic(), so just call setTargetRpm() / stop() from commands.
+ */
 public class Shooter extends SubsystemBase {
+    private final DcMotorEx left;
+    private final DcMotorEx right;
+    private final VoltageSensor battery;
 
-    private final DcMotorEx shooterLeft;
-    private final DcMotorEx shooterRight;
-    private final DcMotorEx feeder;
+    private final PIDController pid = new PIDController(0, 0, 0);
+    private final ElapsedTime stableTimer = new ElapsedTime();
+    private final ElapsedTime voltageTimer = new ElapsedTime();
 
-    private final Telemetry telemtry;
+    private double targetRpm = 0;
+    private double filteredRpm = 0;
+    private double voltage;
+    private double rawRpm = 0;
+    private double lastPower = 0;
 
-    // Change this to whatever RPM you determine is appropriate.
-    private double targetRPM = 0;
+    public Shooter(HardwareMap hardwareMap) {
+        left = hardwareMap.get(DcMotorEx.class, Constants.Shooter.LEFT_MOTOR);
+        right = hardwareMap.get(DcMotorEx.class, Constants.Shooter.RIGHT_MOTOR);
 
-    public Shooter(HardwareMap hardwareMap, Telemetry telemetry) {
+        left.setDirection(Constants.Shooter.LEFT_REVERSED
+                ? DcMotorSimple.Direction.REVERSE : DcMotorSimple.Direction.FORWARD);
+        right.setDirection(Constants.Shooter.RIGHT_REVERSED
+                ? DcMotorSimple.Direction.REVERSE : DcMotorSimple.Direction.FORWARD);
 
-        shooterLeft = hardwareMap.get(DcMotorEx.class, "shooterLeft");
-        shooterRight = hardwareMap.get(DcMotorEx.class, "shooterRight");
-        feeder = hardwareMap.get(DcMotorEx.class, "feeder");
+        for (DcMotorEx m : new DcMotorEx[]{left, right}) {
+            m.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+            // We do our own velocity control; the encoders are only used for reading velocity.
+            m.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+            // Let the flywheel coast when power is cut instead of braking hard.
+            m.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
+        }
 
-        this.telemtry = telemetry;
-
-        /*
-         * Set directions so both wheels spin in the correct physical
-         * direction for your shooter.
-         *
-         * You may need to swap these depending on how the motors
-         * are mounted.
-         */
-        shooterLeft.setDirection(DcMotor.Direction.FORWARD);
-        shooterRight.setDirection(DcMotor.Direction.REVERSE);
-
-        shooterLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
-        shooterRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
-
-        shooterLeft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        shooterRight.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-
-        stop();
-    }
-
-    /**
-     * Set the desired shooter speed in RPM.
-     */
-    public void setRPM(double rpm) {
-        targetRPM = rpm;
-
-        double ticksPerSecond = rpmToTicksPerSecond(rpm);
-
-        shooterLeft.setVelocity(ticksPerSecond);
-        shooterRight.setVelocity(ticksPerSecond);
-    }
-
-    /**
-     * Stop both shooter motors.
-     */
-    public void stop() {
-        targetRPM = 0;
-
-        shooterLeft.setVelocity(0);
-        shooterRight.setVelocity(0);
-    }
-
-    /**
-     * Returns the target RPM.
-     */
-    public double getTargetRPM() {
-        return targetRPM;
-    }
-
-    /**
-     * Returns the current RPM of the left motor.
-     */
-    public double getLeftRPM() {
-        return ticksPerSecondToRPM(shooterLeft.getVelocity());
-    }
-
-    /**
-     * Returns the current RPM of the right motor.
-     */
-    public double getRightRPM() {
-        return ticksPerSecondToRPM(shooterRight.getVelocity());
-    }
-
-    public void setFeederPower(double power){
-        feeder.setPower(power);
-    }
-
-    /**
-     * Returns true if both motors are sufficiently close
-     * to the requested RPM.
-     */
-    public boolean atTargetRPM(double toleranceRPM) {
-
-        return Math.abs(getLeftRPM() - targetRPM) <= toleranceRPM
-                && Math.abs(getRightRPM() - targetRPM) <= toleranceRPM;
-    }
-
-    private double rpmToTicksPerSecond(double rpm) {
-
-        double leftTicksPerRev =
-                shooterLeft.getMotorType().getTicksPerRev();
-
-        return rpm * leftTicksPerRev / 60.0;
-    }
-
-    private double ticksPerSecondToRPM(double ticksPerSecond) {
-
-        double ticksPerRev =
-                shooterLeft.getMotorType().getTicksPerRev();
-
-        return ticksPerSecond * 60.0 / ticksPerRev;
+        battery = hardwareMap.voltageSensor.iterator().next();
+        voltage = battery.getVoltage();
     }
 
     @Override
     public void periodic() {
-        telemtry.addData("Left Shooter RPM", getLeftRPM());
-        telemtry.addData("Right Shooter RPM", getRightRPM());
+        double measured = measureRpm();
+        rawRpm = measured;
+        filteredRpm += Constants.Shooter.VELOCITY_FILTER_ALPHA * (measured - filteredRpm);
 
-        telemtry.update();
+        if (targetRpm <= 0) {
+            setPower(0);
+            stableTimer.reset();
+            return;
+        }
 
+        // Re-read battery voltage a few times a second (it changes slowly).
+        if (voltageTimer.milliseconds() > 200) {
+            double v = battery.getVoltage();
+            if (v > 5) voltage = v;
+            voltageTimer.reset();
+        }
 
+        pid.setPID(Constants.Shooter.kP, Constants.Shooter.kI, Constants.Shooter.kD);
+        pid.setIntegrationBounds(-Constants.Shooter.INTEGRAL_LIMIT, Constants.Shooter.INTEGRAL_LIMIT);
 
-        // Velocity control maintains the requested RPM automatically.
-        // This method can later be used for telemetry.
+        double feedforward = Constants.Shooter.kV * targetRpm
+                * (Constants.Shooter.NOMINAL_VOLTAGE / voltage);
+        double output = feedforward + pid.calculate(filteredRpm, targetRpm);
+
+        // The flywheel only ever spins one way; no reverse power.
+        setPower(Math.max(0, Math.min(1, output)));
+
+        if (Math.abs(targetRpm - filteredRpm) > Constants.Shooter.RPM_TOLERANCE) {
+            stableTimer.reset();
+        }
+    }
+
+    public void setTargetRpm(double rpm) {
+        double clamped = Math.max(0, Math.min(Constants.Shooter.MAX_RPM, rpm));
+        if (clamped != targetRpm) {
+            pid.reset();
+            targetRpm = clamped;
+        }
+    }
+
+    public void stop() {
+        setTargetRpm(0);
+    }
+
+    /** True once the flywheel has stayed within tolerance of the target for STABLE_MS. */
+    public boolean atSpeed() {
+        return targetRpm > 0 && stableTimer.milliseconds() >= Constants.Shooter.STABLE_MS;
+    }
+
+    public double getRpm() {
+        return filteredRpm;
+    }
+
+    public double getTargetRpm() {
+        return targetRpm;
+    }
+
+    public double getRawRpm() {
+        return rawRpm;
+    }
+
+    public double getPower() {
+        return lastPower;
+    }
+
+    /**
+     * Adds the flywheel values used for tuning. Every value is numeric and the same keys are
+     * added on every call, so FTC Dashboard's graph can plot them without flickering.
+     */
+    public void addTelemetry(Telemetry telemetry) {
+        telemetry.addData("Shooter target RPM", targetRpm);
+        telemetry.addData("Shooter RPM", filteredRpm);
+        telemetry.addData("Shooter raw RPM", rawRpm);
+        telemetry.addData("Shooter error RPM", targetRpm - filteredRpm);
+        telemetry.addData("Shooter power", lastPower);
+        telemetry.addData("Shooter at speed (0/1)", atSpeed() ? 1 : 0);
+    }
+
+    private double measureRpm() {
+        // getVelocity() is in ticks/second; average both motors.
+        double ticksPerSecond = (Math.abs(left.getVelocity()) + Math.abs(right.getVelocity())) / 2.0;
+        return ticksPerSecond * 60.0 / Constants.Shooter.TICKS_PER_REV;
+    }
+
+    private void setPower(double power) {
+        lastPower = power;
+        left.setPower(power);
+        right.setPower(power);
     }
 }

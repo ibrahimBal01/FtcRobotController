@@ -4,31 +4,24 @@ import com.arcrobotics.ftclib.command.CommandBase;
 
 import org.firstinspires.ftc.teamcode.subsystems.Shooter;
 
-public class SetShooterRPMCommand extends CommandBase {
-
+/** Sets the flywheel target RPM and finishes immediately; the flywheel keeps spinning. */
+public class SetShooterRpmCommand extends CommandBase {
     private final Shooter shooter;
-    private final double targetRPM;
-    private final double toleranceRPM;
+    private final double rpm;
 
-    public SetShooterRPMCommand(
-            Shooter shooter,
-            double targetRPM,
-            double toleranceRPM
-    ) {
+    public SetShooterRpmCommand(Shooter shooter, double rpm) {
         this.shooter = shooter;
-        this.targetRPM = targetRPM;
-        this.toleranceRPM = toleranceRPM;
-
+        this.rpm = rpm;
         addRequirements(shooter);
     }
 
     @Override
     public void initialize() {
-        shooter.setRPM(targetRPM);
+        shooter.setTargetRpm(rpm);
     }
 
     @Override
     public boolean isFinished() {
-        return shooter.atTargetRPM(toleranceRPM);
+        return true;
     }
 }

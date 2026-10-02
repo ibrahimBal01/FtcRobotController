@@ -33,7 +33,7 @@ public class SimpleAuto extends CommandOpMode {
 
     @Override
     public void initialize() {
-        robot = new Robot(hardwareMap, telemetry);
+        robot = new Robot(hardwareMap);
 
         Path out = line(START, FORWARD).constant(0);
         Path left = line(FORWARD, FORWARD2).constant(0);
