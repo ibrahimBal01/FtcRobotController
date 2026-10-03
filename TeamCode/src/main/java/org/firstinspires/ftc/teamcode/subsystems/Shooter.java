@@ -69,21 +69,30 @@ public class Shooter extends SubsystemBase {
         }
 
         // Re-read battery voltage a few times a second (it changes slowly).
-        if (voltageTimer.milliseconds() > 200) {
+        if (voltageTimer.milliseconds() > 50) {
             double v = battery.getVoltage();
-            if (v > 5) voltage = v;
+            if (v > 5) voltage += Constants.Shooter.VOLTAGE_FILTER_ALPHA * (v - voltage);
             voltageTimer.reset();
         }
 
-        pid.setPID(Constants.Shooter.kP, Constants.Shooter.kI, Constants.Shooter.kD);
-        pid.setIntegrationBounds(-Constants.Shooter.INTEGRAL_LIMIT, Constants.Shooter.INTEGRAL_LIMIT);
+        double error = targetRpm - filteredRpm;
 
-        double feedforward = Constants.Shooter.kV * targetRpm
-                * (Constants.Shooter.NOMINAL_VOLTAGE / voltage);
-        double output = feedforward + pid.calculate(filteredRpm, targetRpm);
+        if (Constants.Shooter.USE_RECOVERY_BOOST && error > Constants.Shooter.RECOVERY_THRESHOLD_RPM) {
+            // Far below target (ball dip / spin-up): full authority, keep the integral from winding up.
+            pid.reset();
+            setPower(Constants.Shooter.RECOVERY_POWER);
+        } else {
+            pid.setPID(Constants.Shooter.kP, Constants.Shooter.kI, Constants.Shooter.kD);
+            pid.setIntegrationBounds(-Constants.Shooter.INTEGRAL_LIMIT, Constants.Shooter.INTEGRAL_LIMIT);
 
-        // The flywheel only ever spins one way; no reverse power.
-        setPower(Math.max(0, Math.min(1, output)));
+            double voltageScale = Constants.Shooter.USE_VOLTAGE_COMP
+                    ? Constants.Shooter.NOMINAL_VOLTAGE / voltage : 1.0;
+            double feedforward = Constants.Shooter.kV * targetRpm * voltageScale;
+            double output = feedforward + pid.calculate(filteredRpm, targetRpm);
+
+            // The flywheel only ever spins one way; no reverse power.
+            setPower(Math.max(0, Math.min(1, output)));
+        }
 
         if (Math.abs(targetRpm - filteredRpm) > Constants.Shooter.RPM_TOLERANCE) {
             stableTimer.reset();
@@ -105,6 +114,12 @@ public class Shooter extends SubsystemBase {
     /** True once the flywheel has stayed within tolerance of the target for STABLE_MS. */
     public boolean atSpeed() {
         return targetRpm > 0 && stableTimer.milliseconds() >= Constants.Shooter.STABLE_MS;
+    }
+
+    /** True when RPM is within FEED_TOLERANCE_RPM of target right now (no settle time). */
+    public boolean readyToFeed() {
+        return targetRpm > 0
+                && Math.abs(targetRpm - filteredRpm) <= Constants.Shooter.FEED_TOLERANCE_RPM;
     }
 
     public double getRpm() {

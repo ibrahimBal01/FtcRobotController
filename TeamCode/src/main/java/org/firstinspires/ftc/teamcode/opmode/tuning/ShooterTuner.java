@@ -38,9 +38,12 @@ public class ShooterTuner extends CommandOpMode {
         feeder = new Feeder(hardwareMap);
 
         GamepadEx pad = new GamepadEx(gamepad1);
+
         pad.getGamepadButton(GamepadKeys.Button.A).whenPressed(() -> spinning = !spinning);
+
         pad.getGamepadButton(GamepadKeys.Button.RIGHT_BUMPER)
                 .whileHeld(new InstantCommand(()-> {feeder.setPower(1);}));
+
         pad.getGamepadButton(GamepadKeys.Button.LEFT_BUMPER)
                 .whileHeld(new InstantCommand(()-> {feeder.setPower(0);}));
 
@@ -49,6 +52,7 @@ public class ShooterTuner extends CommandOpMode {
         schedule(new RunCommand(() -> {
             shooter.setTargetRpm(spinning ? Constants.Shooter.SHOOT_RPM : 0);
             shooter.addTelemetry(telemetry);
+            telemetry.addData("Feeder RPM", feeder.getRpm());
             telemetry.update();
         }));
     }

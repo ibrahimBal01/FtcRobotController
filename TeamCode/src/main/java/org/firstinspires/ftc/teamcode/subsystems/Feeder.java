@@ -24,12 +24,16 @@ public class Feeder extends SubsystemBase {
     public void run() {
         motor.setPower(Constants.Feeder.POWER);
     }
-
     public void setPower(double power) {
         motor.setPower(power);
     }
 
     public void stop() {
         motor.setPower(0);
+    }
+
+    public double getRpm() {
+        double motorRpm = motor.getVelocity() * 60.0 / Constants.Feeder.TICKS_PER_MOTOR_REV;
+        return motorRpm / Constants.Feeder.GEAR_RATIO;
     }
 }

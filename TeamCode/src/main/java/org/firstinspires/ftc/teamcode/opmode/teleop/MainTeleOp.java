@@ -57,6 +57,7 @@ public class MainTeleOp extends CommandOpMode {
             telemetry.addData("Shooter RPM", robot.shooter.getRpm());
             telemetry.addData("At speed", robot.shooter.atSpeed());
             telemetry.addData("Robot Pose", robot.drive.getPose());
+            telemetry.addData("Feeder RPM", robot.feeder.getRpm());
             telemetry.update();
         }));
     }

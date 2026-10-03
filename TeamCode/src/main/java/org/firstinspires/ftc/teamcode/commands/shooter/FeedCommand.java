@@ -26,7 +26,7 @@ public class FeedCommand extends CommandBase {
 
     @Override
     public void execute() {
-        if (shooter == null || shooter.atSpeed()) {
+        if (shooter == null || shooter.readyToFeed()) {
             feeder.run();
         } else {
             feeder.stop();
