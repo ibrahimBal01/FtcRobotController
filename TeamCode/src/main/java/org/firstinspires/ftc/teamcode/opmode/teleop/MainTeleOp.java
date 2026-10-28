@@ -45,19 +45,18 @@ public class MainTeleOp extends CommandOpMode {
         //driver.getGamepadButton(GamepadKeys.Button.A).whenPressed(new SetNectarTurretStateCommand(robot.nectarTurret, NectarTurret.State.SCORE));
 
         driver.getGamepadButton(GamepadKeys.Button.LEFT_BUMPER).whenPressed(robot.drive::resetHeading);
-        driver.getGamepadButton(GamepadKeys.Button.RIGHT_BUMPER).whenPressed(new SetShooterRpmCommand(robot.shooter, Constants.Shooter.SHOOT_RPM));
-        driver.getGamepadButton(GamepadKeys.Button.B).whenPressed(new StopShooterCommand(robot.shooter));
+        driver.getGamepadButton(GamepadKeys.Button.X).whenPressed(new SetShooterRpmCommand(robot.small_shooter, Constants.Shooters.SMALL.shootRpm));
+        driver.getGamepadButton(GamepadKeys.Button.B).whenPressed(new StopShooterCommand(robot.small_shooter));
         // Shooter: RIGHT_BUMPER = spin up, B = stop, hold A = feed (only while at speed)
         driver.getGamepadButton(GamepadKeys.Button.A)
-                .whileHeld(new FeedCommand(robot.feeder, robot.shooter));
+                .whileHeld(new FeedCommand(robot.feeder, robot.large_shooter, robot.small_shooter));
 
         // Telemetry for tuning the flywheel
         schedule(new RunCommand(() -> {
-            telemetry.addData("Shooter target RPM", robot.shooter.getTargetRpm());
-            telemetry.addData("Shooter RPM", robot.shooter.getRpm());
-            telemetry.addData("At speed", robot.shooter.atSpeed());
+           // telemetry.addData("Shooter target RPM", robot.shooter.getTargetRpm());
+           // telemetry.addData("Shooter RPM", robot.shooter.getRpm());
+          //  telemetry.addData("At speed", robot.shooter.atSpeed());
             telemetry.addData("Robot Pose", robot.drive.getPose());
-            telemetry.addData("Feeder RPM", robot.feeder.getRpm());
             telemetry.update();
         }));
     }

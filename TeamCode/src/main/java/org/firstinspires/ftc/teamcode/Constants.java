@@ -12,59 +12,34 @@ public final class Constants {
 
     // Non-final fields in here show up in FTC Dashboard's Configuration tab (group "Shooter").
     // Dashboard edits are live only; copy the final values back into this file.
-    @Config("Shooter")
-    public static final class Shooter {
-        // Hardware config names (change to match your Robot Configuration)
-        public static final String LEFT_MOTOR = "shooterLeft";
-        public static final String RIGHT_MOTOR = "shooterRight";
+    @Config("Shooters")
+    public static final class Shooters {
+        // One motor per shooter, goBILDA 6000 rpm (1:1): 28 ticks/rev, 6000 rpm free speed.
+        // Hardware names must match your Robot Configuration. For two motors on one shooter use
+        // e.g. new String[]{"largeA", "largeB"} and new boolean[]{false, true}.
+        public static ShooterConfig LARGE = new ShooterConfig(
+                new String[]{"shooterLarge"}, new boolean[]{false}, 28.0, 6000.0, 3000.0,
+                "hoodLarge", false);
+        public static ShooterConfig SMALL = new ShooterConfig(
+                new String[]{"shooterSmall"}, new boolean[]{false}, 28.0, 6000.0, 3000.0,
+                "hoodSmall", false);
 
-        // The two motors face each other across the flywheel, so one is usually reversed.
-        // If the flywheel fights itself or spins the wrong way, flip these.
-        public static final boolean LEFT_REVERSED = false;
-        public static final boolean RIGHT_REVERSED = true;
+        static{
+            LARGE.kP = 0.0003;
+            SMALL.kP = 0.0003;
+        }
 
-        // goBILDA 6000 rpm (1:1) motor: 28 encoder ticks per output revolution.
-        // Change if there is a gear/belt ratio between the encoder and the flywheel.
-        public static final double TICKS_PER_REV = 28.0;
-        public static final double MAX_RPM = 6000.0;
+        private Shooters() {}
+    }
 
-        // Tunable (non-final so they can be changed live with a dashboard later).
-        public static double SHOOT_RPM = 3000.0; // placeholder -- replace with your measured shooting speed
+    public static final class Turrets {
 
-        // Feedforward: motor power per RPM of target. 1/MAX_RPM is the theoretical start value.
-        public static double kV = 1.0 / MAX_RPM;
-        // Feedback on RPM error (power per RPM of error).
-        public static double kP = 0.0003;
-        public static double kI = 0.0;
-        public static double kD = 0.0;
-        public static double INTEGRAL_LIMIT = 300.0; // clamps accumulated error (rpm*s)
+        public static TurretConfig LARGE = new TurretConfig(
+                "turretLarge", false, "encoderLarge"
+        );
 
-        // Battery voltage the feedforward was tuned at (it is scaled by NOMINAL / actual).
-        public static double NOMINAL_VOLTAGE = 12.0;
-        // Set false to test whether voltage compensation is causing oscillation.
-        public static boolean USE_VOLTAGE_COMP = true;
-        // Battery voltage low-pass (1.0 = no filtering). Voltage sags when the motors draw current.
-        public static double VOLTAGE_FILTER_ALPHA = 0.1;
-
-        // "At speed" = within RPM_TOLERANCE of target continuously for STABLE_MS.
-        public static double RPM_TOLERANCE = 50.0;
-        public static double STABLE_MS = 100.0;
-
-        // Recovery boost: if the flywheel is more than RECOVERY_THRESHOLD_RPM below target (after a
-        // shot, or during spin-up) apply RECOVERY_POWER instead of the PIDF output, then hand back
-        // to PIDF once it is close again. Lower the threshold/power if it overshoots.
-        public static boolean USE_RECOVERY_BOOST = true;
-        public static double RECOVERY_THRESHOLD_RPM = 100.0;
-        public static double RECOVERY_POWER = 1.0;
-
-        // Feeder gate: feed as soon as RPM is within FEED_TOLERANCE_RPM of target (no settle time),
-        // so the next piece goes in right after the dip recovers. Keep it above the RPM noise.
-        public static double FEED_TOLERANCE_RPM = 100.0;
-
-        // Velocity low-pass filter: 1.0 = no filtering, smaller = smoother but laggier.
-        public static double VELOCITY_FILTER_ALPHA = 0.4;
-
-        private Shooter() {}
+        public static TurretConfig SMALL = new TurretConfig(
+                "turretSmall", false, "encoderSmall");
     }
 
     public static final class Feeder {
@@ -76,6 +51,21 @@ public final class Constants {
 
         public static final int GEAR_RATIO = 9;
 
+        public static final String SMALL_FLAP = "small_flap";
+        public static final String LARGE_FLAP = "large_flap";
+
+        public static final boolean SMALL_FLAP_REVERSED = false;
+        public static final boolean LARGE_FLAP_REVERSED = false;
+
+        public static final int FLAP_OPEN_MS = 150;
+
+
         private Feeder() {}
+    }
+
+    public static final class Intake {
+        public static final String MOTOR = "intake";
+        public static final boolean REVERSED = false;
+        public static final double POWER = 0.7;
     }
 }

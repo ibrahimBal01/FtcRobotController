@@ -12,6 +12,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.commands.shooter.FeedCommand;
 import org.firstinspires.ftc.teamcode.subsystems.Feeder;
+import org.firstinspires.ftc.teamcode.subsystems.Hood;
 import org.firstinspires.ftc.teamcode.subsystems.Shooter;
 
 /**
@@ -25,7 +26,10 @@ import org.firstinspires.ftc.teamcode.subsystems.Shooter;
  */
 @TeleOp(name = "Shooter Tuner", group = "Tuning")
 public class ShooterTuner extends CommandOpMode {
-    private Shooter shooter;
+    private Shooter large_shooter;
+    private Shooter small_shooter;
+    private Hood small_hood;
+    private Hood large_hood;
     private Feeder feeder;
     private boolean spinning = false;
 
@@ -34,7 +38,13 @@ public class ShooterTuner extends CommandOpMode {
         telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
         FtcDashboard.getInstance().setTelemetryTransmissionInterval(25); // smoother graph
 
-        shooter = new Shooter(hardwareMap);
+        large_shooter = new Shooter(hardwareMap, "Large", Constants.Shooters.LARGE);
+        small_shooter = new Shooter(hardwareMap, "Small", Constants.Shooters.SMALL);
+
+        small_hood = new Hood(hardwareMap, "Small", Constants.Shooters.SMALL);
+        large_hood = new Hood(hardwareMap, "Large", Constants.Shooters.LARGE);
+
+
         feeder = new Feeder(hardwareMap);
 
         GamepadEx pad = new GamepadEx(gamepad1);
@@ -42,17 +52,18 @@ public class ShooterTuner extends CommandOpMode {
         pad.getGamepadButton(GamepadKeys.Button.A).whenPressed(() -> spinning = !spinning);
 
         pad.getGamepadButton(GamepadKeys.Button.RIGHT_BUMPER)
-                .whileHeld(new InstantCommand(()-> {feeder.setPower(1);}));
+                .whileHeld(new FeedCommand(feeder, large_shooter, small_shooter));
 
-        pad.getGamepadButton(GamepadKeys.Button.LEFT_BUMPER)
-                .whileHeld(new InstantCommand(()-> {feeder.setPower(0);}));
 
 
 
         schedule(new RunCommand(() -> {
-            shooter.setTargetRpm(spinning ? Constants.Shooter.SHOOT_RPM : 0);
-            shooter.addTelemetry(telemetry);
-            telemetry.addData("Feeder RPM", feeder.getRpm());
+            large_shooter.setTargetRpm(spinning ? Constants.Shooters.LARGE.shootRpm : 0);
+            large_shooter.addTelemetry(telemetry);
+
+            small_shooter.setTargetRpm(spinning ? Constants.Shooters.SMALL.shootRpm : 0);
+            small_shooter.addTelemetry(telemetry);
+
             telemetry.update();
         }));
     }
