@@ -34,7 +34,7 @@ public final class Constants {
         // Feedforward: motor power per RPM of target. 1/MAX_RPM is the theoretical start value.
         public static double kV = 1.0 / MAX_RPM;
         // Feedback on RPM error (power per RPM of error).
-        public static double kP = 0.0003;
+        public static double kP = 0.0009;
         public static double kI = 0.0;
         public static double kD = 0.0;
         public static double INTEGRAL_LIMIT = 300.0; // clamps accumulated error (rpm*s)

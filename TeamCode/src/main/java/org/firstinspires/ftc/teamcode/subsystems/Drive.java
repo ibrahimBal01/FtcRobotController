@@ -7,6 +7,7 @@ import com.pedropathing.follower.ManualDrive;
 import com.pedropathing.math.Pose;
 import com.pedropathing.paths.Path;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 
 import org.firstinspires.ftc.teamcode.pedro.Constants;
 
@@ -22,14 +23,20 @@ import org.firstinspires.ftc.teamcode.pedro.Constants;
  */
 public class Drive extends SubsystemBase {
     private final Follower follower;
+    private final GoBildaPinpointDriver pinpoint;
+    private double fieldCentricReference;
+    private double poseUpdateTime = Double.NEGATIVE_INFINITY;
+    private boolean fieldPoseConfirmed;
 
     public Drive(HardwareMap hardwareMap) {
         follower = Constants.create(hardwareMap);
+        pinpoint = hardwareMap.get(GoBildaPinpointDriver.class, Constants.localizerConfig.name.get());
     }
 
     @Override
     public void periodic() {
         follower.update();
+        poseUpdateTime = Turret.now();
     }
 
     // ---------------- TeleOp ----------------
@@ -41,17 +48,17 @@ public class Drive extends SubsystemBase {
     public void manualFieldCentric(double forward, double lateral, double turn) {
         double s = org.firstinspires.ftc.teamcode.Constants.Drive.MAX_POWER;
         follower.manual(ManualDrive.fieldCentric(
-                forward * s, lateral * s, turn * s, follower.pose().heading()));
+                forward * s, lateral * s, turn * s, follower.pose().heading() - fieldCentricReference));
     }
 
     /** Makes the robot's current facing the new field-centric "forward". */
     public void resetHeading() {
-        Pose p = follower.pose();
-        follower.setPose(new Pose(p.x(), p.y(), 0));
+        fieldCentricReference = follower.pose().heading();
     }
 
     public void stop() {
-        follower.manual(new DrivePowers(0, 0, 0));
+        follower.stop();
+        follower.drivetrain.stop(); // Zero hardware immediately, even after the last scheduler tick.
     }
 
     // ---------------- Autonomous ----------------
@@ -80,6 +87,15 @@ public class Drive extends SubsystemBase {
 
     public void setPose(Pose pose) {
         follower.setPose(pose);
+        fieldPoseConfirmed = false;
+    }
+
+    /** Call after setting a physically verified absolute field pose, including in Auto. */
+    public void confirmFieldPose(boolean confirmed) { fieldPoseConfirmed = confirmed; }
+    public boolean isFieldPoseConfirmed() { return fieldPoseConfirmed; }
+    public double getPoseUpdateTime() { return poseUpdateTime; }
+    public boolean isLocalizationReady() {
+        return pinpoint.getDeviceStatus() == GoBildaPinpointDriver.DeviceStatus.READY;
     }
 
     /** Escape hatch for anything not wrapped here (telemetry, follower.mode(), ...). */

@@ -29,4 +29,8 @@ public class SpinUpShooterCommand extends CommandBase {
     public boolean isFinished() {
         return shooter.atSpeed();
     }
+
+    @Override public void end(boolean interrupted) {
+        if (interrupted) shooter.stop();
+    }
 }

@@ -46,4 +46,6 @@ public class DefaultDriveCommand extends CommandBase {
     public boolean isFinished() {
         return false;
     }
+
+    @Override public void end(boolean interrupted) { drive.stop(); }
 }

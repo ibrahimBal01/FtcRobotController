@@ -31,6 +31,11 @@ public class SimpleAuto extends CommandOpMode {
 
     private Robot robot;
 
+    @Override public void reset() {
+        if (robot != null) robot.stop();
+        super.reset();
+    }
+
     @Override
     public void initialize() {
         robot = new Robot(hardwareMap);

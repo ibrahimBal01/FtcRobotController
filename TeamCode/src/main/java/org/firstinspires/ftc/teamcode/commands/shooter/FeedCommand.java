@@ -1,45 +1,33 @@
 package org.firstinspires.ftc.teamcode.commands.shooter;
-
 import com.arcrobotics.ftclib.command.CommandBase;
+import java.util.function.BooleanSupplier;
+import org.firstinspires.ftc.teamcode.aiming.FeedCycle;
+import org.firstinspires.ftc.teamcode.subsystems.*;
 
-import org.firstinspires.ftc.teamcode.subsystems.Feeder;
-import org.firstinspires.ftc.teamcode.subsystems.Shooter;
-
-/**
- * Runs the feeder until cancelled (e.g. whileHeld, or .withTimeout(ms) in auto).
- * If a Shooter is given, the feeder only runs while the flywheel is at speed, so every
- * piece is launched at the same RPM; it pauses while the flywheel recovers after a shot.
- */
+/** Bounded BENCH calibration pulse. Competition uses ShootOneCommand with field tracking. */
 public class FeedCommand extends CommandBase {
     private final Feeder feeder;
-    private final Shooter shooter; // may be null = ungated
-
-    public FeedCommand(Feeder feeder) {
-        this(feeder, null);
+    private final Shooter shooter;
+    private final BooleanSupplier alignment;
+    private final FeedCycle cycle=new FeedCycle();
+    private boolean opened;
+    public FeedCommand(Feeder feeder,Shooter shooter) { this(feeder,shooter,()->true); }
+    public FeedCommand(Feeder feeder,Shooter shooter,BooleanSupplier alignment) {
+        if(shooter==null) throw new IllegalArgumentException("Shooter required");
+        this.feeder=feeder;this.shooter=shooter;this.alignment=alignment;addRequirements(feeder);
     }
-
-    public FeedCommand(Feeder feeder, Shooter shooter) {
-        this.feeder = feeder;
-        this.shooter = shooter;
-        addRequirements(feeder); // only reads the shooter, so it does not require it
+    @Override public void initialize() { opened=false;feeder.stop();cycle.start(Turret.now()); }
+    @Override public void execute() {
+        boolean safe=alignment.getAsBoolean() && shooter.getTargetRpm()>0 && feeder.available();
+        if(cycle.update(Turret.now(),safe && shooter.atSpeed() && feeder.readyForPulse(),safe,
+                feeder.config().waitTimeoutS,feeder.config().pulseS)) {
+            feeder.run();opened=true;
+        } else feeder.stop();
     }
-
-    @Override
-    public void execute() {
-        if (shooter == null || shooter.readyToFeed()) {
-            feeder.run();
-        } else {
-            feeder.stop();
-        }
-    }
-
-    @Override
-    public void end(boolean interrupted) {
+    @Override public boolean isFinished() { return cycle.finished() || !feeder.available(); }
+    @Override public void end(boolean interrupted) {
         feeder.stop();
-    }
-
-    @Override
-    public boolean isFinished() {
-        return false;
+        if(opened) {feeder.finishPulse();shooter.invalidateReadiness();}
     }
 }
+
