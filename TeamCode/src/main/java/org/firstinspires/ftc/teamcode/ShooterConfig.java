@@ -1,11 +1,14 @@
 package org.firstinspires.ftc.teamcode;
 
+import com.acmerobotics.dashboard.config.Config;
+
 /**
  * Hardware description + tuning values for one flywheel shooter.
  * Create one instance per shooter (see Constants.Shooters). The public non-final fields show up
  * in FTC Dashboard's Configuration tab and are re-read every loop, so they can be tuned live.
  * Dashboard edits are live only; copy the final values back into Constants.java.
  */
+
 public class ShooterConfig {
     // ---- Hardware description (fixed in code) ----
     private final String[] motorNames;
@@ -24,6 +27,7 @@ public class ShooterConfig {
 
     /** Target RPM used by the gamepad bindings / tuner. */
     public double shootRpm;
+
 
     /** Feedforward: motor power per RPM of target. 1/maxRpm is the theoretical start value. */
     public double kV;
