@@ -27,11 +27,15 @@ public final class Constants {
         static{
             LARGE.kP = 0.0003;
             SMALL.kP = 0.0003;
+
+            LARGE.kV = 1.0 / 6000;
+            SMALL.kV = 1.0 / 6000;
         }
 
         private Shooters() {}
     }
 
+    @Config("Turrets")
     public static final class Turrets {
 
         public static TurretConfig LARGE = new TurretConfig(
@@ -40,6 +44,14 @@ public final class Constants {
 
         public static TurretConfig SMALL = new TurretConfig(
                 "turretSmall", false, "encoderSmall");
+
+        static {
+            LARGE.kP = 0.0003;
+            SMALL.kP = 0.0003;
+
+            LARGE.kS = 0.0;
+            SMALL.kS = 0.0;
+        }
     }
 
     public static final class Feeder {
@@ -58,6 +70,10 @@ public final class Constants {
         public static final boolean LARGE_FLAP_REVERSED = false;
 
         public static final int FLAP_OPEN_MS = 150;
+
+        public static final double OPENED_POSITION = 0.5;
+        public static final double CLOSED_POSITION = 0.0;
+
 
 
         private Feeder() {}

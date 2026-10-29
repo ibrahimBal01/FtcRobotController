@@ -48,10 +48,10 @@ public class Feeder extends SubsystemBase {
         motor.setPower(power);
     }
 
-    public void openSmallFlap() { small_flap.setPosition(0.5); }
-    public void closeSmallFlap() { small_flap.setPosition(0.0); }
-    public void openLargeFlap() { large_flap.setPosition(0.5); }
-    public void closeLargeFlap() { large_flap.setPosition(0.0); }
+    public void openSmallFlap() { small_flap.setPosition(Constants.Feeder.OPENED_POSITION); }
+    public void closeSmallFlap() { small_flap.setPosition(Constants.Feeder.CLOSED_POSITION); }
+    public void openLargeFlap() { large_flap.setPosition(Constants.Feeder.OPENED_POSITION); }
+    public void closeLargeFlap() { large_flap.setPosition(Constants.Feeder.CLOSED_POSITION); }
 
     public void stop() {
         motor.setPower(0);

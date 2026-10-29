@@ -11,6 +11,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.commands.shooter.FeedCommand;
+import org.firstinspires.ftc.teamcode.commands.shooter.SetHoodPositionCommand;
 import org.firstinspires.ftc.teamcode.subsystems.Feeder;
 import org.firstinspires.ftc.teamcode.subsystems.Hood;
 import org.firstinspires.ftc.teamcode.subsystems.Shooter;
@@ -49,10 +50,22 @@ public class ShooterTuner extends CommandOpMode {
 
         GamepadEx pad = new GamepadEx(gamepad1);
 
-        pad.getGamepadButton(GamepadKeys.Button.A).whenPressed(() -> spinning = !spinning);
+        pad.getGamepadButton(GamepadKeys.Button.RIGHT_BUMPER).whenPressed(() -> spinning = !spinning);
 
-        pad.getGamepadButton(GamepadKeys.Button.RIGHT_BUMPER)
+        pad.getGamepadButton(GamepadKeys.Button.LEFT_BUMPER)
                 .whileHeld(new FeedCommand(feeder, large_shooter, small_shooter));
+
+        pad.getGamepadButton(GamepadKeys.Button.A)
+                        .whenPressed(new SetHoodPositionCommand(small_hood,0.0));
+
+        pad.getGamepadButton(GamepadKeys.Button.B)
+                .whenPressed(new SetHoodPositionCommand(small_hood,1.0));
+
+        pad.getGamepadButton(GamepadKeys.Button.X)
+                .whenPressed(new SetHoodPositionCommand(large_hood,0.0));
+
+        pad.getGamepadButton(GamepadKeys.Button.Y)
+                .whenPressed(new SetHoodPositionCommand(large_hood,1.0));
 
 
 
@@ -63,6 +76,10 @@ public class ShooterTuner extends CommandOpMode {
 
             small_shooter.setTargetRpm(spinning ? Constants.Shooters.SMALL.shootRpm : 0);
             small_shooter.addTelemetry(telemetry);
+
+            small_hood.addTelemetry(telemetry);
+            large_hood.addTelemetry(telemetry);
+            
 
             telemetry.update();
         }));

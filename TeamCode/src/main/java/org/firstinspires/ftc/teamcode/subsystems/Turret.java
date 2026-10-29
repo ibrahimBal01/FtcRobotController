@@ -19,13 +19,13 @@ public class Turret extends SubsystemBase {
     private final DcMotorEx encoder;
     private final VoltageSensor battery;
     private final PIDController pid = new PIDController(0,0,0);
-    private final ElapsedTime stableTimer = new ElapsedTime();
     private final ElapsedTime voltageTimer = new ElapsedTime();
     private double voltage;
 
     private double angleOffsetDegrees = 0;
     private double lastPower = 0;
     private double targetAngle;
+    private double targetVelocity = 0; // deg/s the target is moving at (feedforward)
 
 
 
@@ -50,14 +50,28 @@ public class Turret extends SubsystemBase {
         double measured = getAngleDegrees();
         double power;
 
+        if (voltageTimer.milliseconds() > 50) {
+            double v = battery.getVoltage();
+            if (v > 5) voltage = v;
+            voltageTimer.reset();
+        }
+
         double error = targetAngle - measured;
+
+        double voltageScale = cfg.useVoltageComp ? cfg.nominalVoltage / voltage : 1.0;
+
+        // Velocity feedforward: kV is motor power per (degree/second) of target motion.
+        double feedforward = cfg.kV * targetVelocity * voltageScale;
+
         if(Math.abs(error) <= cfg.TOLERANCE_DEGREES){
             pid.reset();
-            power = 0;
+            power = feedforward;
         } else {
             pid.setPID(cfg.kP, cfg.kI, cfg.kD);
-            power = pid.calculate(measured, targetAngle) + Math.signum(error) * cfg.kS;
+            power = pid.calculate(measured, targetAngle) + Math.signum(error) * cfg.kS + feedforward;
         }
+
+
 
         if ((measured <= cfg.MIN_DEGREES && power < 0) || (measured >= cfg.MAX_DEGREES && power > 0)) {
             power = 0;
@@ -75,7 +89,56 @@ public class Turret extends SubsystemBase {
     }
 
     public void setTargetAngle(double degrees) {
+        setTargetAngle(degrees, 0.0);
+    }
+
+    /**
+     * @param degrees            target angle (clamped to MIN..MAX)
+     * @param velocityDegPerSec  how fast the target itself is moving (0 for a fixed target);
+     *                           used for feedforward so a moving target is tracked without lag
+     */
+    public void setTargetAngle(double degrees, double velocityDegPerSec) {
         targetAngle = Math.max(cfg.MIN_DEGREES, Math.min(cfg.MAX_DEGREES, degrees));
+        targetVelocity = velocityDegPerSec;
+    }
+
+    public double getTargetAngle() { return targetAngle; }
+    public double getMinDegrees() { return cfg.MIN_DEGREES; }
+    public double getMaxDegrees() { return cfg.MAX_DEGREES; }
+
+    /**
+     * A direction (headingDeg) can be reached by several turret angles when the turret can turn
+     * more than 360 degrees: headingDeg + 360*k. This returns the one that lies inside
+     * [minDeg, maxDeg] and is closest to referenceDeg (normally the previous target, so the
+     * turret only unwinds when it is forced to by a limit).
+     * If the direction is not reachable at all, it returns the closest limit.
+     */
+    public static double chooseAngle(double headingDeg, double referenceDeg, double minDeg, double maxDeg) {
+        int kMin = (int) Math.ceil((minDeg - headingDeg) / 360.0);
+        int kMax = (int) Math.floor((maxDeg - headingDeg) / 360.0);
+
+        if (kMin > kMax) { // no multiple of 360 puts this direction inside the limits
+            double toMin = Math.abs(wrap180(headingDeg - minDeg));
+            double toMax = Math.abs(wrap180(headingDeg - maxDeg));
+            return toMin <= toMax ? minDeg : maxDeg;
+        }
+
+        double best = headingDeg + 360.0 * kMin;
+        for (int k = kMin + 1; k <= kMax; k++) {
+            double candidate = headingDeg + 360.0 * k;
+            if (Math.abs(candidate - referenceDeg) < Math.abs(best - referenceDeg)) {
+                best = candidate;
+            }
+        }
+        return best;
+    }
+
+    /** Wraps an angle in degrees into (-180, 180]. */
+    public static double wrap180(double deg) {
+        double a = deg % 360.0;
+        if (a > 180.0) a -= 360.0;
+        if (a <= -180.0) a += 360.0;
+        return a;
     }
 
     public boolean atTarget() {

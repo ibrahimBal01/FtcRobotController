@@ -11,7 +11,7 @@ import org.firstinspires.ftc.teamcode.Constants;
 public class Intake extends SubsystemBase {
     private final DcMotorEx motor;
     public Intake(HardwareMap hardwareMap){
-        motor = hardwareMap.get(DcMotorEx.class, Constants.Feeder.MOTOR);
+        motor = hardwareMap.get(DcMotorEx.class, Constants.Intake.MOTOR);
         motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         motor.setDirection(Constants.Intake.REVERSED ?
